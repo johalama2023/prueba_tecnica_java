@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Orders service serverless (API → Lambda Java → DynamoDB)
+Globals:
+  Function:
+    Runtime: java21
+    MemorySize: 1024
+    Timeout: 15
+    Tracing: Active
+Parameters:
+  TableName:
+    Type: String
+    Default: OrdersTable
+Resources:
+  OrdersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref TableName
+      AttributeDefinitions:
+        - AttributeName: ordenId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: ordenId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+  OrdersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: orders-handler
+      CodeUri: .
+      Handler: com.example.orders.Handler::handleRequest
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref OrdersTable
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+                - dynamodb:UpdateItem
+              Resource: !GetAtt OrdersTable.Arn
+      Events:
+        ApiPost:
+          Type: HttpApi
+          Properties:
+            Path: /orden
+            Method: POST
+            PayloadFormatVersion: '1.0'
+        ApiGet:
+          Type: HttpApi
+          Properties:
+            Path: /orden/{id}
+            Method: GET
+            PayloadFormatVersion: '1.0'
+        ApiPut:
+          Type: HttpApi
+          Properties:
+            Path: /orden/{id}/estado
+            Method: PUT
+            PayloadFormatVersion: '1.0'
+Outputs:
+  ApiEndpoint:
+    Description: Base URL
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"

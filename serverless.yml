@@ -1,0 +1,47 @@
+service: orders-service
+frameworkVersion: '3'
+provider:
+  name: aws
+  runtime: java21
+  memorySize: 1024
+  timeout: 15
+  httpApi:
+    metrics: true
+  environment:
+    TABLE_NAME: ${self:custom.tableName}
+plugins:
+  - serverless-deployment-bucket
+custom:
+  tableName: OrdersTable
+package:
+  artifact: target/orders-service-1.0.0-shaded.jar
+functions:
+  orders:
+    name: orders-handler
+    handler: com.example.orders.Handler::handleRequest
+    events:
+      - httpApi:
+          path: /orden
+          method: POST
+      - httpApi:
+          path: /orden/{id}
+          method: GET
+      - httpApi:
+          path: /orden/{id}/estado
+          method: PUT
+resources:
+  Resources:
+    OrdersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableName}
+        AttributeDefinitions:
+          - AttributeName: ordenId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: ordenId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+  Outputs:
+    TableArn:
+      Value: { "Fn::GetAtt": [ "OrdersTable", "Arn" ] }
